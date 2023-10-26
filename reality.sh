@@ -10,7 +10,12 @@ fi
 timedatectl set-timezone Asia/Shanghai
 v2uuid=$(cat /proc/sys/kernel/random/uuid)
 
-getIP() {
+read -t 15 -p "回车或等待15秒为默认端口443，或者自定义端口请输入(1-65535)："  getPort
+if [ -z $getPort ];then
+    getPort=443
+fi
+
+getIP(){
     local serverIP=
     serverIP=$(curl -s -4 http://www.cloudflare.com/cdn-cgi/trace | grep "ip" | awk -F "[=]" '{print $2}')
     if [[ -z "${serverIP}" ]]; then
@@ -28,7 +33,7 @@ install_xray(){
         yum install -y epel-release
         yum install -y gawk curl
     fi
-    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --version 1.8.1
+    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 }
 
 reconfig(){
@@ -40,7 +45,7 @@ cat >/usr/local/etc/xray/config.json<<EOF
 {
     "inbounds": [
         {
-            "port": 443,
+            "port": $getPort,
             "protocol": "vless",
             "settings": {
                 "clients": [
@@ -59,8 +64,10 @@ cat >/usr/local/etc/xray/config.json<<EOF
                     "dest": "www.rakuma.co.jp:443",
                     "xver": 0,
                     "serverNames": [
-                        "amazon.com",
-                        "www.rakuma.co.jp"
+                        "www.rakuma.co.jp",
+                        "addons.mozilla.org",
+                        "www.un.org",
+                        "www.tesla.com"
                     ],
                     "privateKey": "$rePrivateKey",
                     "minClientVer": "",
@@ -68,7 +75,7 @@ cat >/usr/local/etc/xray/config.json<<EOF
                     "maxTimeDiff": 0,
                     "shortIds": [
                         "88",
-                        "888888"
+                        "123abc"
                     ]
                 }
             }
@@ -95,7 +102,7 @@ cat >/usr/local/etc/xray/reclient.json<<EOF
 ===========配置参数=============
 代理模式：vless
 地址：$(getIP)
-端口：443
+端口：${getPort}
 UUID：${v2uuid}
 流控：xtls-rprx-vision
 传输协议：tcp
@@ -104,7 +111,7 @@ Public key：${rePublicKey}
 SNI: www.rakuma.co.jp
 shortIds: 88
 ====================================
-vless://$v2uuid@$(getIP):443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.rakuma.co.jp&fp=chrome&pbk=$rePublicKey&sid=88&type=tcp&headerType=none#1024-reality
+vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.rakuma.co.jp&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality
 
 }
 EOF
@@ -119,7 +126,7 @@ client_re(){
     echo "===========reality配置参数============"
     echo "代理模式：vless"
     echo "地址：$(getIP)"
-    echo "端口：443"
+    echo "端口：${getPort}"
     echo "UUID：${v2uuid}"
     echo "流控：xtls-rprx-vision"
     echo "传输协议：tcp"
@@ -128,12 +135,10 @@ client_re(){
     echo "SNI: www.rakuma.co.jp"
     echo "shortIds: 88"
     echo "===================================="
-    echo "vless://$v2uuid@$(getIP):443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.rakuma.co.jp&fp=chrome&pbk=$rePublicKey&sid=88&type=tcp&headerType=none#1024-reality"
+    echo "vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.rakuma.co.jp&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality"
     echo
 }
 
 install_xray
 reconfig
 client_re
-
-
